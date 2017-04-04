@@ -84,7 +84,7 @@ PROGRAM LARGEUNIAXIALEXTENSIONEXAMPLE
   !all times in [ms]
   REAL(CMISSRP) :: time !=10.00_CMISSRP
   REAL(CMISSRP), PARAMETER :: PERIODD=1.00_CMISSRP
-  REAL(CMISSRP)            :: TIME_STOP=150.0_CMISSRP
+  REAL(CMISSRP)            :: TIME_STOP=0.0_CMISSRP
 
   REAL(CMISSRP) :: ODE_TIME_STEP = 0.0001_CMISSRP            !0.0001_CMISSRP
   REAL(CMISSRP) :: PDE_TIME_STEP = 0.005_CMISSRP              ! 0.005_CMISSRP
@@ -134,7 +134,7 @@ PROGRAM LARGEUNIAXIALEXTENSIONEXAMPLE
   !Inital Conditions
   REAL(CMISSRP), PARAMETER :: INITIAL_STRETCH=1.0_CMISSRP   ! previous value in new mechanical description: 1.2_CMISSRP
   REAL(CMISSRP), PARAMETER :: CONTRACTION_VELOCITY=-6.0e-1_CMISSRP ![cm/s]
-  INTEGER(CMISSIntg), PARAMETER :: ElasticityLoopMaximumNumberOfIterations = 5
+  INTEGER(CMISSIntg), PARAMETER :: ElasticityLoopMaximumNumberOfIterations = 10000 ! increased for higher computation time
   INTEGER(CMISSIntg), PARAMETER :: NewtonMaximumNumberOfIterations = 500
   REAL(CMISSRP), PARAMETER :: NewtonTolerance = 1.E-8_CMISSRP
 
