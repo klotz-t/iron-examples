@@ -68,7 +68,7 @@ PROGRAM LARGEUNIAXIALEXTENSIONEXAMPLE
 
   !--------------------------------------------------------------------------------------------------------------------------------
   !Test program parameters
-  LOGICAL, PARAMETER :: DEBUGGING_ONLY_RUN_SHORT_PART_OF_SIMULATION = .TRUE.    ! only run one timestep of MAIN_LOOP with stimulus
+  LOGICAL, PARAMETER :: DEBUGGING_ONLY_RUN_SHORT_PART_OF_SIMULATION = .FALSE.    ! only run one timestep of MAIN_LOOP with stimulus
   LOGICAL, PARAMETER :: DEBUGGING_OUTPUT_PROBLEM = .FALSE.    ! output information about problem data structure
   LOGICAL, PARAMETER :: DEBUGGING_PARALLEL_BARRIER = .FALSE.   !
   INTEGER(CMISSINTg) :: RUN_SCENARIO = 0  !0 = default, no extra values set, 1 = short for testing, 2 = for scaling tests (10s), 3 = very short, 4 = endless
@@ -84,7 +84,7 @@ PROGRAM LARGEUNIAXIALEXTENSIONEXAMPLE
   !all times in [ms]
   REAL(CMISSRP) :: time !=10.00_CMISSRP
   REAL(CMISSRP), PARAMETER :: PERIODD=1.00_CMISSRP
-  REAL(CMISSRP)            :: TIME_STOP=0.0_CMISSRP
+  REAL(CMISSRP)            :: TIME_STOP=10.0_CMISSRP
 
   REAL(CMISSRP) :: ODE_TIME_STEP = 0.0001_CMISSRP            !0.0001_CMISSRP
   REAL(CMISSRP) :: PDE_TIME_STEP = 0.005_CMISSRP              ! 0.005_CMISSRP
@@ -134,7 +134,7 @@ PROGRAM LARGEUNIAXIALEXTENSIONEXAMPLE
   !Inital Conditions
   REAL(CMISSRP), PARAMETER :: INITIAL_STRETCH=1.0_CMISSRP   ! previous value in new mechanical description: 1.2_CMISSRP
   REAL(CMISSRP), PARAMETER :: CONTRACTION_VELOCITY=-6.0e-1_CMISSRP ![cm/s]
-  INTEGER(CMISSIntg), PARAMETER :: ElasticityLoopMaximumNumberOfIterations = 10000 ! increased for higher computation time
+  INTEGER(CMISSIntg), PARAMETER :: ElasticityLoopMaximumNumberOfIterations = 10 ! increased for higher computation time
   INTEGER(CMISSIntg), PARAMETER :: NewtonMaximumNumberOfIterations = 500
   REAL(CMISSRP), PARAMETER :: NewtonTolerance = 1.E-8_CMISSRP
 
