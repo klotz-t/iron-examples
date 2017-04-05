@@ -68,11 +68,12 @@ PROGRAM LARGEUNIAXIALEXTENSIONEXAMPLE
 
   !--------------------------------------------------------------------------------------------------------------------------------
   !Test program parameters
-  LOGICAL, PARAMETER :: DEBUGGING_ONLY_RUN_SHORT_PART_OF_SIMULATION = .TRUE.    ! only run one timestep of MAIN_LOOP with stimulus
+  LOGICAL, PARAMETER :: DEBUGGING_ONLY_RUN_SHORT_PART_OF_SIMULATION = .FALSE.    ! only run one timestep of MAIN_LOOP with stimulus
   LOGICAL, PARAMETER :: DEBUGGING_OUTPUT_PROBLEM = .FALSE.    ! output information about problem data structure
   LOGICAL, PARAMETER :: DEBUGGING_PARALLEL_BARRIER = .FALSE.   !
   INTEGER(CMISSINTg) :: RUN_SCENARIO = 0  !0 = default, no extra values set, 1 = short for testing, 2 = for scaling tests (10s), 3 = very short, 4 = endless
-  LOGICAL, PARAMETER :: DEBUGGING_OUTPUT = .FALSE.    ! enable information from solvers
+  LOGICAL, PARAMETER :: DEBUGGING_OUTPUT = .TRUE.    ! enable information from solvers
+  LOGICAL, PARAMETER :: DEBUGGING_OUTPUT2 = .TRUE.    ! enable information from solvers, but not from 3D FE solver
   LOGICAL, PARAMETER :: OLD_TOMO_MECHANICS = .TRUE.    ! whether to use the old mechanical description of Thomas Heidlauf that works also in parallel
 
   REAL(CMISSRP), PARAMETER :: tol=1.0E-8_CMISSRP
@@ -84,7 +85,7 @@ PROGRAM LARGEUNIAXIALEXTENSIONEXAMPLE
   !all times in [ms]
   REAL(CMISSRP) :: time !=10.00_CMISSRP
   REAL(CMISSRP), PARAMETER :: PERIODD=1.00_CMISSRP
-  REAL(CMISSRP)            :: TIME_STOP=0.0_CMISSRP
+  REAL(CMISSRP)            :: TIME_STOP=1.0_CMISSRP
 
   REAL(CMISSRP) :: ODE_TIME_STEP = 0.0001_CMISSRP            !0.0001_CMISSRP
   REAL(CMISSRP) :: PDE_TIME_STEP = 0.005_CMISSRP              ! 0.005_CMISSRP
@@ -2237,7 +2238,7 @@ SUBROUTINE CreateControlLoops()
   CALL cmfe_ControlLoop_TimesSet(ControlLoopMain,0.0_CMISSRP,ELASTICITY_TIME_STEP,ELASTICITY_TIME_STEP,Err)
 
   CALL cmfe_ControlLoop_TimeOutputSet(ControlLoopMain,OUTPUT_TIME_STEP_STRIDE,Err)
-  IF (DEBUGGING_OUTPUT) THEN
+  IF (DEBUGGING_OUTPUT .OR. DEBUGGING_OUTPUT2) THEN
     CALL cmfe_ControlLoop_OutputTypeSet(ControlLoopMain,cmfe_CONTROL_LOOP_TIMING_OUTPUT,Err)
   ELSE
     ! output types:
@@ -2257,7 +2258,7 @@ SUBROUTINE CreateControlLoops()
   CALL cmfe_ControlLoop_LabelSet(ControlLoopM,'MONODOMAIN_TIME_LOOP',Err)
   CALL cmfe_ControlLoop_TimesSet(ControlLoopM,0.0_CMISSRP,ELASTICITY_TIME_STEP,PDE_TIME_STEP,Err)
 
-  IF (DEBUGGING_OUTPUT) THEN
+  IF (DEBUGGING_OUTPUT .OR. DEBUGGING_OUTPUT2) THEN
     CALL cmfe_ControlLoop_OutputTypeSet(ControlLoopM,CMFE_CONTROL_LOOP_TIMING_OUTPUT,Err)
     !CALL cmfe_ControlLoop_OutputTypeSet(ControlLoopM,CMFE_CONTROL_LOOP_NO_OUTPUT,Err)
   ELSE
@@ -2345,12 +2346,12 @@ SUBROUTINE CreateSolvers()
   !CALL cmfe_SOLVER_DYNAMICLINEARITYTYPESET(SolverParabolic, CMFE_SOLVER_DYNAMIC_LINEAR, Err)
   !CALL cmfe_Solver_NonlinearTypeSet(SolverParabolic,CMFE_SOLVER_NONLINEAR_NEWTON,Err)
 
-  IF (DEBUGGING_OUTPUT) THEN
-    CALL cmfe_Solver_OutputTypeSet(SolverParabolic,CMFE_SOLVER_NO_OUTPUT,Err)
+  IF (DEBUGGING_OUTPUT .OR. DEBUGGING_OUTPUT2) THEN
+    !CALL cmfe_Solver_OutputTypeSet(SolverParabolic,CMFE_SOLVER_NO_OUTPUT,Err)
     !CALL cmfe_Solver_OutputTypeSet(SolverParabolic,CMFE_SOLVER_PROGRESS_OUTPUT,Err)
     !CALL cmfe_Solver_OutputTypeSet(SolverParabolic,CMFE_SOLVER_TIMING_OUTPUT,Err)
     !CALL cmfe_Solver_OutputTypeSet(SolverParabolic,CMFE_SOLVER_SOLVER_OUTPUT,Err)
-    !CALL cmfe_Solver_OutputTypeSet(SolverParabolic,CMFE_SOLVER_MATRIX_OUTPUT,Err)
+    CALL cmfe_Solver_OutputTypeSet(SolverParabolic,CMFE_SOLVER_MATRIX_OUTPUT,Err)
   ELSE
     CALL cmfe_Solver_OutputTypeSet(SolverParabolic,CMFE_SOLVER_NO_OUTPUT,Err)
   ENDIF
