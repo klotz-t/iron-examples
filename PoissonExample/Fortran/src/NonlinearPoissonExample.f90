@@ -97,7 +97,7 @@ PROGRAM NONLINEARPOISSONEXAMPLE
 
   !INTEGER(CMISSIntg) :: FirstNodeNumber,LastNodeNumber,FirstNodeDomain,LastNodeDomain
   INTEGER(CMISSIntg) :: node_idx,NodeNumber,NodeDomain,i,j,elemx,elemy,blocksizeX,blocksizeY,lastBlocksizeX,elem_idx, &
-                        & lastBlocksizeY,numberOfBlocks,numberOfBlocksX,numberOfBlocksY
+                        & lastBlocksizeY,numberOfBlocks,numberOfBlocksX,numberOfBlocksY,aL,bL
 
   LOGICAL :: EXPORT_FIELD
 
@@ -163,8 +163,10 @@ PROGRAM NONLINEARPOISSONEXAMPLE
     IF(INTERPOLATION_TYPE<=0) CALL HANDLE_ERROR("Invalid Interpolation specification.")
     IF(NUMBER_GLOBAL_Z_ELEMENTS>0) THEN
       NUMBER_DIMENSIONS=3
+     ! WRITE (*,*) 'point +'
     ELSEIF(NUMBER_GLOBAL_Y_ELEMENTS>0) THEN
       NUMBER_DIMENSIONS=2
+     ! WRITE(*,*) 'point *'
     ELSE
       NUMBER_DIMENSIONS=1
     ENDIF
@@ -177,6 +179,7 @@ PROGRAM NONLINEARPOISSONEXAMPLE
     INTERPOLATION_TYPE=1
   ENDIF
 
+  WRITE(*,*) 'NUMBER_DIMENSIONS = ',NUMBER_DIMENSIONS
   !Intialise OpenCMISS
   CALL cmfe_Initialise(WorldCoordinateSystem,WorldRegion,Err)
 
@@ -277,21 +280,61 @@ PROGRAM NONLINEARPOISSONEXAMPLE
   CALL cmfe_Decomposition_TypeSet(Decomposition,CMFE_DECOMPOSITION_USER_DEFINED_TYPE,Err)
   
   !if (NumberOfComputationalNodes)
-  numberOfBlocks=NumberOfComputationalNodes
-  numberOfBlocksX=INT(SQRT(REAL(numberOfBlocks)))
+  numberOfBlocks=NumberOfComputationalNodes ! das sind eigentlich cores, keine nodes! auf cray: 1node hat zwei sockets, ein socket hat 12 kerne. es gibt ca 7k nodes
+  numberOfBlocksX=INT(SQRT(REAL(numberOfBlocks+0.00000001_CMISSRP)))
   numberOfBlocksY=numberOfBlocksX
-  blocksizeX = NUMBER_GLOBAL_X_ELEMENTS/numberOfBlocksX
-  blocksizeY = NUMBER_GLOBAL_Y_ELEMENTS/numberOfBlocksY
-  
+
+  blocksizeX = INT(REAL(NUMBER_GLOBAL_X_ELEMENTS)/numberOfBlocksX)
+  aL = NUMBER_GLOBAL_X_ELEMENTS-(numberOfBlocksX-1)*blocksizeX
+  blocksizeY = INT(REAL(NUMBER_GLOBAL_Y_ELEMENTS)/numberOfBlocksY)
+  bL = NUMBER_GLOBAL_Y_ELEMENTS-(numberOfBlocksY-1)*blocksizeY
+
   DO i=1,numberOfBlocksY
     DO j=1,numberOfBlocksX
-      DO elemx=1,blocksizeX
-        DO elemy=1,blocksizeY
-          elem_idx = (i-1) * blocksizeY*NUMBER_GLOBAL_X_ELEMENTS + (elemy-1) * NUMBER_GLOBAL_X_ELEMENTS + elemx + (j-1)*blocksizeX
+      IF ((i==numberOfBlocksY) .AND. (j==numberOfBlocksX)) THEN
+        DO elemy=1,bL
+          DO elemx=1,aL
+            elem_idx = NUMBER_GLOBAL_X_ELEMENTS*(NUMBER_GLOBAL_Y_ELEMENTS-bL)+elemy*(NUMBER_GLOBAL_X_ELEMENTS-aL)+aL*(elemy-1)+elemx
+         ! IF (elem_idx>2500)THEN         
+         !   WRITE(*,*) 'Assigning element ', elem_idx, ' to domain (x,y):', j,i,'. Domain number: ',(i-1)*numberOfBlocksX+j-1
+         ! ENDIF
           CALL cmfe_Decomposition_ElementDomainSet(Decomposition,elem_idx,(i-1)*numberOfBlocksX + j - 1,Err)
-          WRITE(*,*) 'Assign element ', elem_idx, ' to domain (x,y):', j,i,'. Domain number: ',(i-1)*numberOfBlocksX+j-1
+          ENDDO
         ENDDO
-      ENDDO
+      ELSE IF (j==numberOfBlocksX) THEN
+        DO elemy=1,blocksizeY
+          DO elemx=1,aL
+            elem_idx = NUMBER_GLOBAL_X_ELEMENTS*(i-1)*blocksizeY+(NUMBER_GLOBAL_X_ELEMENTS-aL)*elemy+(elemy-1)*aL+elemx
+         ! IF (elem_idx>2500)THEN
+         !   WRITE(*,*) 'Assigning element ', elem_idx, ' to domain (x,y):', j,i,'. Domain number: ',(i-1)*numberOfBlocksX+j-1
+         ! ENDIF
+          CALL cmfe_Decomposition_ElementDomainSet(Decomposition,elem_idx,(i-1)*numberOfBlocksX + j - 1,Err)
+          !  WRITE(*,*) 'Assign element ', elem_idx, ' to domain (x,y):', j,i,'. Domain number: ',(i-1)*numberOfBlocksX+j-1
+          ENDDO
+        ENDDO
+      ELSE IF (i==numberOfBlocksY) THEN
+        DO elemy=1,bL
+          DO elemx=1,blocksizeX
+            elem_idx = ((i-1)*blocksizeY+(elemy-1))*NUMBER_GLOBAL_X_ELEMENTS+(j-1)*blocksizeX+elemx
+        !  IF (elem_idx>2500)THEN
+        !    WRITE(*,*) 'Assigning element ', elem_idx, ' to domain (x,y):', j,i,'. Domain number: ',(i-1)*numberOfBlocksX+j-1
+        !  ENDIF         
+          CALL cmfe_Decomposition_ElementDomainSet(Decomposition,elem_idx,(i-1)*numberOfBlocksX + j - 1,Err)
+          !  WRITE(*,*) 'Assign element ', elem_idx, ' to domain (x,y):', j,i,'. Domain number: ',(i-1)*numberOfBlocksX+j-1
+          ENDDO
+        ENDDO
+      ELSE
+        DO elemy=1,blocksizeY
+          DO elemx=1,blocksizeX
+            elem_idx = NUMBER_GLOBAL_X_ELEMENTS*((i-1)*blocksizeY+(elemy-1))+(j-1)*blocksizeX+elemx
+        !  IF (elem_idx>2500)THEN
+        !    WRITE(*,*) 'Assigning element ', elem_idx, ' to domain (x,y):', j,i,'. Domain number: ',(i-1)*numberOfBlocksX+j-1
+        !  ENDIF
+          CALL cmfe_Decomposition_ElementDomainSet(Decomposition,elem_idx,(i-1)*numberOfBlocksX + j - 1,Err)
+          !  WRITE(*,*) 'Assign element ', elem_idx, ' to domain (x,y):', j,i,'. Domain number: ',(i-1)*numberOfBlocksX+j-1
+          ENDDO
+        ENDDO
+      ENDIF 
     ENDDO
   ENDDO
   CALL cmfe_Decomposition_NumberOfDomainsSet(Decomposition,numberOfBlocks,Err)
@@ -415,7 +458,7 @@ PROGRAM NONLINEARPOISSONEXAMPLE
   CALL cmfe_Solver_NewtonLinearSolverGet(Solver,LinearSolver,Err)
   CALL cmfe_Solver_LinearIterativeRelativeToleranceSet(LinearSolver,1.0E-8_CMISSRP,Err)
   CALL cmfe_Solver_LinearIterativeAbsoluteToleranceSet(LinearSolver,1.0E-8_CMISSRP,Err)
-  CALL cmfe_Solver_LinearIterativeMaximumIterationsSet(LinearSolver,10000,Err)
+  CALL cmfe_Solver_LinearIterativeMaximumIterationsSet(LinearSolver,100000,Err)!was 10.000 instead 100.000 [Aaron]
   !Finish the creation of the problem solver
   CALL cmfe_Problem_SolversCreateFinish(Problem,Err)
 
@@ -444,6 +487,7 @@ PROGRAM NONLINEARPOISSONEXAMPLE
     NodeNumber=LeftSurfaceNodes(node_idx)
     CALL cmfe_Decomposition_NodeDomainGet(Decomposition,NodeNumber,1,NodeDomain,Err)
     IF(NodeDomain==ComputationalNodeNumber) THEN
+   ! WRITE(*,*) 'LEFT:: NodeNumber =', NodeNumber, 'NodeDomain = ', NodeDomain
       CALL cmfe_BoundaryConditions_SetNode(BoundaryConditions,DependentField,CMFE_FIELD_U_VARIABLE_TYPE,1,1,NodeNumber,1, &
         & CMFE_BOUNDARY_CONDITION_FIXED,0.0_CMISSRP,Err)
     ENDIF
@@ -452,6 +496,7 @@ PROGRAM NONLINEARPOISSONEXAMPLE
     NodeNumber=RightSurfaceNodes(node_idx)
     CALL cmfe_Decomposition_NodeDomainGet(Decomposition,NodeNumber,1,NodeDomain,Err)
     IF(NodeDomain==ComputationalNodeNumber) THEN
+   ! WRITE(*,*) 'RIGHT:: NodeNumber =', NodeNumber, 'NodeDomain = ', NodeDomain
       CALL cmfe_BoundaryConditions_SetNode(BoundaryConditions,DependentField,CMFE_FIELD_U_VARIABLE_TYPE,1,1,NodeNumber,1, &
         & CMFE_BOUNDARY_CONDITION_FIXED,1.0_CMISSRP,Err)
     ENDIF
