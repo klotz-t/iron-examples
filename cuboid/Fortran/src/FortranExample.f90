@@ -442,9 +442,6 @@ PROGRAM LARGEUNIAXIALEXTENSIONEXAMPLE
   !Calculate the bioelectrics geometric field
   CALL CalculateBioelectrics()
   
-   PRINT*, "Size IndependentFieldFE:",cmfe_getFieldSize(IndependentFieldFE, Err),"Bytes"
-   PRINT*, "Size IndependentFieldM: ",cmfe_getFieldSize(IndependentFieldM, Err),"Bytes"
-  
   !PRINT*, "Abort program in FortranExample.f90:450"
   CALL MPI_BARRIER(MPI_COMM_WORLD, Err)
   !STOP
@@ -2621,10 +2618,10 @@ SUBROUTINE CalculateBioelectrics()
   
   CALL cmfe_BioelectricsFiniteElasticity_UpdateGeometricField(ControlLoopM,.TRUE.,Err)
 
-  CALL SLEEP(2)
+  !CALL SLEEP(2)
   
-  PRINT*, "after cmfe_BioelectricsFiniteElasticity_UpdateGeometricField"
-  CALL cmfe_OutputInterpolationParameters(Problem,DependentFieldM, SolverParabolic,Err)
+  !PRINT*, "after cmfe_BioelectricsFiniteElasticity_UpdateGeometricField"
+  !CALL cmfe_OutputInterpolationParameters(Problem,DependentFieldM, SolverParabolic,Err)
   
   !reset the relative contraction velocity to 0
   CALL cmfe_Field_ComponentValuesInitialise(IndependentFieldM,CMFE_FIELD_U2_VARIABLE_TYPE,CMFE_FIELD_VALUES_SET_TYPE,3, &
