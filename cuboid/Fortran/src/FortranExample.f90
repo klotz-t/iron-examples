@@ -84,7 +84,7 @@ PROGRAM LARGEUNIAXIALEXTENSIONEXAMPLE
   !all times in [ms]
   REAL(CMISSRP) :: time !=10.00_CMISSRP
   REAL(CMISSRP), PARAMETER :: PERIODD=1.00_CMISSRP
-  REAL(CMISSRP)            :: TIME_STOP=1.0_CMISSRP
+  REAL(CMISSRP)            :: TIME_STOP=2.0_CMISSRP
 
   REAL(CMISSRP) :: ODE_TIME_STEP = 0.0001_CMISSRP            !0.0001_CMISSRP
   REAL(CMISSRP) :: PDE_TIME_STEP = 0.005_CMISSRP              ! 0.005_CMISSRP
@@ -636,23 +636,23 @@ PROGRAM LARGEUNIAXIALEXTENSIONEXAMPLE
 
 
   !--------------------------------------------------------------------------------------------------------------------------------
-  CALL ExportEMG()
-  CALL cmfe_TimingSummaryOutput(Err)
+  !CALL ExportEMG()
+  !CALL cmfe_TimingSummaryOutput(Err)
 
   !--------------------------------------------------------------------------------------------------------------------------------
   !Finialise CMISS
-  CALL cmfe_Finalise(Err)
+  !CALL cmfe_Finalise(Err)
 
-  CALL cmfe_CustomTimingGet(CustomTimingOdeSolver, CustomTimingParabolicSolver, CustomTimingFESolver, CustomTimingFileOutputUser, &
-    & CustomTimingFileOutputSystem, Err)
+  !CALL cmfe_CustomTimingGet(CustomTimingOdeSolver, CustomTimingParabolicSolver, CustomTimingFESolver, CustomTimingFileOutputUser, &
+  !  & CustomTimingFileOutputSystem, Err)
 
-  CALL WriteTimingFile()
+  !CALL WriteTimingFile()
 
-  CALL WriteCustomProfilingFile()
+  !CALL WriteCustomProfilingFile()
 
-  IF (ComputationalNodeNumber == 0 .AND. CustomProfilingEnabled) THEN
-    PRINT*, TRIM(cmfe_CustomProfilingGetInfo(Err))
-  ENDIF
+  !IF (ComputationalNodeNumber == 0 .AND. CustomProfilingEnabled) THEN
+  !  PRINT*, TRIM(cmfe_CustomProfilingGetInfo(Err))
+  !ENDIF
 
   PRINT*, ""
   PRINT*, "--------------------------------------------------"
