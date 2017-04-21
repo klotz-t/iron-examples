@@ -67,8 +67,8 @@ PROGRAM LARGEUNIAXIALEXTENSIONEXAMPLE
 
   REAL :: elapsed(2)                                     !
 ! Total time (sum of prev. 2):                           |
-  REAL :: total   
-
+  REAL :: total  
+  
   !Material-Parameters C=[mu_1, mu_2, mu_3, alpha_1, alpha_2, alpha_3, mu_0, XB_stiffness]
   REAL(CMISSRP), PARAMETER, DIMENSION(8) :: C= &
 !    & [1.0_CMISSRP,0.0_CMISSRP,0.0_CMISSRP, & ! Neo-Hook
@@ -119,7 +119,7 @@ PROGRAM LARGEUNIAXIALEXTENSIONEXAMPLE
   INTEGER(CMISSIntg), PARAMETER :: CellMLUserNumber=1
   INTEGER(CMISSIntg), PARAMETER :: CellMLModelsFieldUserNumber=12
   INTEGER(CMISSIntg), PARAMETER :: CellMLStateFieldUserNumber=13
-  INTEGER(CMISSIntg), PARAMETER :: CellMLIntermediateFieldUserNumber=14
+  INTEGER(CMISSIntg), PARAMETER :: CellMLIntermediateFieldUserNumber=14 ! set this up correctly!
   INTEGER(CMISSIntg), PARAMETER :: CellMLParametersFieldUserNumber=15
 
   !Program types
@@ -453,10 +453,6 @@ PROGRAM LARGEUNIAXIALEXTENSIONEXAMPLE
   CALL cmfe_CellML_CreateStart(CellMLUserNumber,Region,CellML,Err)
   !Import the Razumova et al. 2000 model from a file
   CALL cmfe_CellML_ModelImport(CellML,filename,shortenModelIndex,Err)
-  !#################################################################################################################################
-  !need this to be prevent abort when constructing intermediate field (cmfe_CellML_IntermediateFieldCreateStart) see #43572345
-!  CALL cmfe_CellML_IntermediateMaxNumberSet(CellML,5,Err)
-  !#################################################################################################################################
   ! Now we have imported all the models we are able to specify which variables from the model we want:
   !   - to set from this side
 !  CALL cmfe_CellML_VariableSetAsKnown(CellML,shortenModelIndex,"equations/lambda_f",Err)
@@ -466,6 +462,10 @@ PROGRAM LARGEUNIAXIALEXTENSIONEXAMPLE
   !   - to get from the CellML side
 !  CALL cmfe_CellML_VariableSetAsWanted(CellML,shortenModelIndex,"A_1",Err)
 !  CALL cmfe_CellML_VariableSetAsWanted(CellML,shortenModelIndex,"A_2",Err)
+!#################################################################################################################################
+  !need this to be prevent abort when constructing intermediate field (cmfe_CellML_IntermediateFieldCreateStart)
+  CALL cmfe_CellML_IntermediateMaxNumberSet(CellML,5,Err)
+!#################################################################################################################################
   CALL cmfe_CellML_CreateFinish(CellML,Err)
 
   !--------------------------------------------------------------------------------------------------------------------------------
@@ -546,15 +546,14 @@ PROGRAM LARGEUNIAXIALEXTENSIONEXAMPLE
 
   CALL cmfe_CellML_StateFieldCreateStart(CellML,CellMLStateFieldUserNumber,CellMLStateField,Err)
   CALL cmfe_CellML_StateFieldCreateFinish(CellML,Err)
-  
+
 !###################################################################################################
-! needed for external DAE solver. see issue #43572345
- !Create the CellML intermediate field
-!  CALL cmfe_Field_Initialise(CellMLIntermediateField,Err)
-!  CALL cmfe_CellML_IntermediateFieldCreateStart(CellML,CellMLIntermediateFieldUserNumber,CellMLIntermediateField,Err)
-!  CALL cmfe_CellML_IntermediateFieldCreateFinish(CellML,Err)
+!  !Create the CellML intermediate field
+  CALL cmfe_Field_Initialise(CellMLIntermediateField,Err)
+  CALL cmfe_CellML_IntermediateFieldCreateStart(CellML,CellMLIntermediateFieldUserNumber,CellMLIntermediateField,Err)
+  CALL cmfe_CellML_IntermediateFieldCreateFinish(CellML,Err)
 !###################################################################################################
-  
+
   !Create the CellML parameters field
   CALL cmfe_Field_Initialise(CellMLParametersField,Err)
   CALL cmfe_Field_CreateStart(CellMLParametersFieldUserNumber,Region,CellMLParametersField,Err)
@@ -598,27 +597,19 @@ PROGRAM LARGEUNIAXIALEXTENSIONEXAMPLE
 
   !Create the DAE solver
   CALL cmfe_Solver_Initialise(SolverDAE,Err)
-  CALL cmfe_Problem_SolverGet(Problem,CMFE_CONTROL_LOOP_NODE,1,SolverDAE,Err)! here? was 1
+  CALL cmfe_Problem_SolverGet(Problem,CMFE_CONTROL_LOOP_NODE,1,SolverDAE,Err)
   CALL cmfe_Solver_DAETimeStepSet(SolverDAE,ODE_TIME_STEP,Err) ! setzt SOLVER%DAE_SOLVER%INITIAL_STEP=TIME_STEP
-  CALL cmfe_Solver_DAETimesSet(SolverDAE,0.0_CMISSRP,0.001_CMISSRP,Err)!ELASTICITY_TIME_STEP,Err) ! setzt start und endzeit SOLVER%DAE_SOLVER%START_TIME=START_TIME / und  ...END_TIME
-  !> \todo - solve the CellML equations on the GPU for efficiency (later)
-!################################################################################### 
-! needed for external DAE solver. see issue #43572345
-!  CALL cmfe_Solver_DAESolverTypeSet(SolverDAE,CMFE_SOLVER_DAE_EXTERNAL,Err)
-!###################################################################################
+  CALL cmfe_Solver_DAETimesSet(SolverDAE,0.0_CMISSRP,0.001_CMISSRP,Err)!ELASTICITY_TIME_STEP,Err) ! setzt star und endzeit SOLVER%DAE_SOLVER%START_TIME=START_TIME / und  ...END_TIME
 
-  CALL cmfe_Solver_DAESolverTypeSet(SolverDAE,CMFE_SOLVER_DAE_EULER,Err)
-  ! CALL cmfe_Solver_DAEEulerSolverTypeSet(SolverDAE,CMFE_SOLVER_DAE_EULER_BACKWARD,Err)  ((!>>ERROR:  1: Problem has not been finished. in line 763 CALL cmfe_Problem_Solve(Problem,Err) - passive mechanical problem 
+!###################################################################################################
+  CALL cmfe_Solver_DAESolverTypeSet(SolverDAE,CMFE_SOLVER_DAE_BDF,Err)  ! wirft fehler in problem_solverdaecellmlrhspetsc in problem_routines.f90, zeile 4704.
+!###################################################################################################
 
-!   the   ! CMFE_SOLVER_DAE_EULER = SOLVER_DAE_EULER                   ! either one of : CMFE_SOLVER_DAE_EULER_FORWARD | CMFE_SOLVER_DAE_EULER_BACKWARD | CMFE_SOLVER_DAE_EULER_IMPROVED
-! FORWARD ! CMFE_SOLVER_DAE_CRANK_NICOLSON = SOLVER_DAE_CRANK_NICOLSON !
-!  euler  ! CMFE_SOLVER_DAE_RUNGE_KUTTA = SOLVER_DAE_RUNGE_KUTTA       !
-!  is the ! CMFE_SOLVER_DAE_ADAMS_MOULTON = SOLVER_DAE_ADAMS_MOULTON   !
-!   ONLY  ! CMFE_SOLVER_DAE_BDF = SOLVER_DAE_BDF                       ! BDF
-! implemen! CMFE_SOLVER_DAE_GL = SOLVER_DAE_GL                         ! General Linear
-! -ted one! CMFE_SOLVER_DAE_RUSH_LARSON = SOLVER_DAE_RUSH_LARSON       !
-!   !!!   ! CMFE_SOLVER_DAE_EXTERNAL = SOLVER_DAE_EXTERNAL             !
-
+!########################################################################################################################
+! Hallo Benni, ich hab die tatsächlichen Änderungen in ActiveStrainMechanics zu ActiveStrainMechanics_BDF mit # markiert.
+! Ich werd dir aber vermutlich einfach
+! Im Moment kommen noch recht viele Not-Converged-Fehler, Man muss also tatsächlich schauen, ob die Ergebnisse vergleichbar sind.
+!!########################################################################################################################
 
   CALL cmfe_Solver_OutputTypeSet(SolverDAE,CMFE_SOLVER_NO_OUTPUT,Err)
   !CALL cmfe_Solver_OutputTypeSet(SolverDAE,CMFE_SOLVER_PROGRESS_OUTPUT,Err)
@@ -628,10 +619,7 @@ PROGRAM LARGEUNIAXIALEXTENSIONEXAMPLE
   !CALL cmfe_Solver_OutputTypeSet(SolverDAE,0.0_CMISSRP,0.01_CMISSRP,ERR)
 
 
-!  CALL cmfe_PrintSolver(SolverDAE,5,30,Err)
-
-
-
+ ! CALL cmfe_PrintSolver(SolverDAE,5,30,Err)
 
   !Create the mechanics solver
   CALL cmfe_Solver_Initialise(Solver,Err)
@@ -642,9 +630,9 @@ PROGRAM LARGEUNIAXIALEXTENSIONEXAMPLE
   CALL cmfe_Solver_NewtonJacobianCalculationTypeSet(Solver,CMFE_SOLVER_NEWTON_JACOBIAN_EQUATIONS_CALCULATED,Err)
   CALL cmfe_Solver_NewtonLinearSolverGet(Solver,LinearSolver,Err)
   CALL cmfe_Solver_LinearTypeSet(LinearSolver,CMFE_SOLVER_LINEAR_DIRECT_SOLVE_TYPE,Err)
-  CALL cmfe_Solver_NewtonRelativeToleranceSet(Solver,1.E-6_CMISSRP,Err) ! war 6
+  CALL cmfe_Solver_NewtonRelativeToleranceSet(Solver,1.E-6_CMISSRP,Err)
   CALL cmfe_Solver_NewtonAbsoluteToleranceSet(Solver,1.E-8_CMISSRP,Err)
-  CALL cmfe_Solver_NewtonMaximumIterationsSet(Solver,200,Err) ! braucht beim ersten mal ca. 10 it. --> rel error. Danach ca 1 it. --> abs err.
+  CALL cmfe_Solver_NewtonMaximumIterationsSet(Solver,200,Err)
 
   CALL cmfe_Problem_SolversCreateFinish(Problem,Err)
 
