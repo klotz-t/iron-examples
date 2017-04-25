@@ -65,6 +65,10 @@ PROGRAM LARGEUNIAXIALEXTENSIONEXAMPLE
 #include "mpif.h"
 #endif
 
+  REAL :: elapsed(2)                                     !
+! Total time (sum of prev. 2):                           |
+  REAL :: total  
+  
   !Material-Parameters C=[mu_1, mu_2, mu_3, alpha_1, alpha_2, alpha_3, mu_0, XB_stiffness]
   REAL(CMISSRP), PARAMETER, DIMENSION(8) :: C= &
 !    & [1.0_CMISSRP,0.0_CMISSRP,0.0_CMISSRP, & ! Neo-Hook
@@ -458,6 +462,10 @@ PROGRAM LARGEUNIAXIALEXTENSIONEXAMPLE
   !   - to get from the CellML side
 !  CALL cmfe_CellML_VariableSetAsWanted(CellML,shortenModelIndex,"A_1",Err)
 !  CALL cmfe_CellML_VariableSetAsWanted(CellML,shortenModelIndex,"A_2",Err)
+!#################################################################################################################################
+  !need this to be prevent abort when constructing intermediate field (cmfe_CellML_IntermediateFieldCreateStart)
+  CALL cmfe_CellML_IntermediateMaxNumberSet(CellML,5,Err)
+!#################################################################################################################################
   CALL cmfe_CellML_CreateFinish(CellML,Err)
 
   !--------------------------------------------------------------------------------------------------------------------------------
@@ -539,11 +547,13 @@ PROGRAM LARGEUNIAXIALEXTENSIONEXAMPLE
   CALL cmfe_CellML_StateFieldCreateStart(CellML,CellMLStateFieldUserNumber,CellMLStateField,Err)
   CALL cmfe_CellML_StateFieldCreateFinish(CellML,Err)
 
+!###################################################################################################
 !  !Create the CellML intermediate field
-!  CALL cmfe_Field_Initialise(CellMLIntermediateField,Err)
-!  CALL cmfe_CellML_IntermediateFieldCreateStart(CellML,CellMLIntermediateFieldUserNumber,CellMLIntermediateField,Err)
-!  CALL cmfe_CellML_IntermediateFieldCreateFinish(CellML,Err)
-  
+  CALL cmfe_Field_Initialise(CellMLIntermediateField,Err)
+  CALL cmfe_CellML_IntermediateFieldCreateStart(CellML,CellMLIntermediateFieldUserNumber,CellMLIntermediateField,Err)
+  CALL cmfe_CellML_IntermediateFieldCreateFinish(CellML,Err)
+!###################################################################################################
+
   !Create the CellML parameters field
   CALL cmfe_Field_Initialise(CellMLParametersField,Err)
   CALL cmfe_Field_CreateStart(CellMLParametersFieldUserNumber,Region,CellMLParametersField,Err)
@@ -800,6 +810,9 @@ PROGRAM LARGEUNIAXIALEXTENSIONEXAMPLE
 
   CALL cmfe_Finalise(Err)
 
+  total = ETIME(elapsed)
+  WRITE(888,*) 'End: total=', total, ' user=', elapsed(1), ' system=', elapsed(2)
+  
   WRITE(*,'(A)') "Program successfully completed."
 
   STOP
