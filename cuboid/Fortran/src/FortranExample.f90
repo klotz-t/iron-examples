@@ -82,13 +82,13 @@ PROGRAM LARGEUNIAXIALEXTENSIONEXAMPLE
 
   !all times in [ms]
   REAL(CMISSRP) :: time !=10.00_CMISSRP
-  REAL(CMISSRP), PARAMETER :: PERIODD=0.2_CMISSRP ! was 1
-  REAL(CMISSRP)            :: TimeStop=0.2_CMISSRP
+  REAL(CMISSRP), PARAMETER :: PERIODD=1.0_CMISSRP ! was 1 0.005_CMISSRP - the time distance of one stimulus to an other (start to start)
+  REAL(CMISSRP)            :: TimeStop=5.0_CMISSRP ! 0.005_CMISSRP       - the minimum time span that will be simulated. However, the actual time span will be a multiple of PERIODD
 
-  REAL(CMISSRP) :: ElasticityTimeStep = 0.1000000000_CMISSRP !0.5_CMISSRP!0.05_CMISSRP!0.8_CMISSRP
+  REAL(CMISSRP) :: ElasticityTimeStep = 0.01_CMISSRP !0.5_CMISSRP!0.05_CMISSRP!0.8_CMISSRP
   REAL(CMISSRP) :: PDETimeStep = 0.005_CMISSRP              ! 0.005_CMISSRP
   REAL(CMISSRP) :: ODETimeStep = 0.0001_CMISSRP!            ! set at '#timestepset'. 50 steps until DiHu - now to be set anew with proper DAE (integration) scheme.
-  
+  INTEGER(CMISSIntg) :: OdeNSteps = -1 ! can be used to set ODETimeStep implicitly. 
  !0.0001000_CMISSRP -> 50  !0.0001020_CMISSRP  !0.0001042_CMISSRP  !0.0001064_CMISSRP  !0.0001087_CMISSRP
  !0.0001111_CMISSRP -> 45  !0.0001136_CMISSRP  !0.0001163_CMISSRP  !0.0001190_CMISSRP  !0.0001220_CMISSRP 
  !0.0001250_CMISSRP -> 40  !0.0001282_CMISSRP  !0.0001316_CMISSRP  !0.0001351_CMISSRP  !0.0001389_CMISSRP
@@ -100,8 +100,8 @@ PROGRAM LARGEUNIAXIALEXTENSIONEXAMPLE
  !0.0005_CMISSRP    -> 10  !0.0005556_CMISSRP  !0.000625_CMISSRP   !0.0007143_CMISSRP  !0.0008333_CMISSRP
  !0.001_CMISSRP     -> 5   !0.00125_CMISSRP    !0.0016667_CMISSRP  !0.0025_CMISSRP     !0.005_CMISSRP     -> 1
 
-!tomo keep ElasticityTimeStep and STIM_STOP at the same values
-  REAL(CMISSRP), PARAMETER :: STIM_STOP=0.1_CMISSRP!ElasticityTimeStep   
+!tomo keep ElasticityTimeStep and STIM_STOP at the same values --> will throw error!!!
+  REAL(CMISSRP), PARAMETER :: STIM_STOP=0.1_CMISSRP ! 0.002_CMISSRP - the duration of a stimulus ('active' part of PERIODD)
 
   INTEGER(CMISSIntg)  :: OutputTimestepStride=1  ! (10)
 
@@ -635,6 +635,9 @@ PROGRAM LARGEUNIAXIALEXTENSIONEXAMPLE
       PRINT "(A,I4)", "   Number of stimulated fibres: ", NumberFiringFibres
     ENDIF
 
+    
+    !
+    !TODO: this is WRONG! we want to stop at TimeStop not at some_integer_N*PERIODD
     !-------------------------------------------------------------------------------------------------------------------------------
     !Solve the problem for the stimulation time
     IF (ComputationalNodeNumber == 0) Print*, "  Solve with stimulation,    time span: ", time, " to ",time+STIM_STOP
@@ -666,6 +669,8 @@ PROGRAM LARGEUNIAXIALEXTENSIONEXAMPLE
       ENDIF
     ENDDO
     
+    !
+    !TODO: this is WRONG! we want to stop at TimeStop not at some_integer_N*PERIODD
     !-------------------------------------------------------------------------------------------------------------------------------
     !Solve the problem for the rest of the period
     IF (ComputationalNodeNumber == 0) PRINT*, "  Solve without stimulation, time span: ", time+STIM_STOP, " to ",time+PERIODD
@@ -1035,6 +1040,8 @@ SUBROUTINE ParseAssignment(Line, LineNumber, ScenarioInputFile)
       READ(StrValue, *, IOSTAT=Stat) Vmax
     CASE ("initialstretch")
       READ(StrValue, *, IOSTAT=Stat) InitialStretch
+    CASE ("odensteps")
+      READ(StrValue, *, IOSTAT=Stat) OdeNSteps
     CASE ("inputdirectory")
       InputDirectory = TRIM(ADJUSTL(StrValue))
       
@@ -1158,7 +1165,9 @@ SUBROUTINE ParseParameters()
         READ(Arg,*,Iostat=Stat)  MonodomainSolverId
       CASE(9)
         READ(Arg,*,Iostat=Stat)  MonodomainPreconditionerId
-      
+      CASE(10)
+        READ(Arg,*,Iostat=Stat)  OdeNSteps
+        
       ENDSELECT
       
       ValueArgumentCount = ValueArgumentCount + 1
@@ -1175,8 +1184,10 @@ SUBROUTINE ParseParameters()
      & "     See the example scenario file for file format and variable names. Variables will be set in order of the arguments."
      
   ENDIF
-
-
+!##################################################################################################################################
+  IF (OdeNSteps/=-1) THEN
+    ODETimeStep = PDETimeStep/OdeNSteps
+  END IF
 !##################################################################################################################################
 
   ! direction of fibres is in Xi1=Global X direction
@@ -3074,10 +3085,7 @@ SUBROUTINE CreateSolvers()
   CALL cmfe_Problem_SolverGet(Problem,[ControlLoopMonodomainNumber,CMFE_CONTROL_LOOP_NODE], &
    & SolverDAEIndex,SolverDAE,Err)
   CALL cmfe_Solver_DAETimeStepSet(SolverDAE,ODETimeStep,Err)  ! #timestepset
-  
-  ! might be handy some day:
-  ! CALL cmfe_Solver_DAETimesSet(SolverDAE,?0.0_CMISSRP?,?0.001_CMISSRP?,Err)
-  
+
   SELECT CASE(ODESolverId) !use bdf instead of default-explicitEuler
     CASE(2)
       CALL cmfe_Solver_DAESolverTypeSet(SolverDAE,CMFE_SOLVER_DAE_BDF,Err)
@@ -3087,11 +3095,18 @@ SUBROUTINE CreateSolvers()
     CASE(4) !!! not stable yet
       CALL cmfe_Solver_DAESolverTypeSet(SolverDAE,CMFE_SOLVER_DAE_CRANK_NICOLSON,Err)
     CASE(5)
-      ! out of date: CALL cmfe_Solver_DAESolverTypeSet(SolverDAE,CMFE_SOLVER_DAE_HEUN,Err)
       CALL cmfe_Solver_DAEEulerSolverTypeSet(SolverDAE,CMFE_SOLVER_DAE_EULER_IMPROVED,Err)
     CASE DEFAULT
       PRINT *, "Consider to use an other DAE solver via the command line option 'ODESolverId'."
   END SELECT
+  !-------------------------------------------------------------------------------------------  
+  !Set the Number of ODE time steps. CARE: This makes cmfe_Solver_DAETimeStepSet() obsolete!
+  IF(ODESolverId==1 .AND. OdeNSteps/=-1) THEN
+    CALL cmfe_Solver_DAEEulerForwardSetNSteps(SolverDAE,OdeNSteps,Err)
+  ELSEIF(ODESolverId==5 .AND. OdeNSteps/=-1) THEN
+    CALL cmfe_Solver_DAEEulerImprovedSetNSteps(SolverDAE,OdeNSteps,Err)
+  END IF
+  
   !> \todo or not-todo... solve the CellML equations on the GPU for efficiency (later)
   !CALL cmfe_Solver_DAESolverTypeSet(SolverDAE,CMFE_SOLVER_DAE_EXTERNAL,Err)
 
